@@ -141,10 +141,9 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, query, addDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // Firebase configuration and global variables provided by the environment
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = {
+        
+        // Use the pre-provided environment variables for Firebase.
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
             apiKey: "AIzaSyB00p4REMFzp3DtE-hY6lnYsT0CaYWSRRw",
             authDomain: "tamil-listening-game.firebaseapp.com",
             projectId: "tamil-listening-game",
@@ -153,7 +152,8 @@
             appId: "1:461656256480:web:60e0ca08ea9893e1c34585",
             measurementId: "G-W1M8716GL4"
         };
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : firebaseConfig.projectId;
         
         let app, auth, db, userId;
         let kidsCollectionRef;
@@ -274,13 +274,6 @@
         window.onload = async function() {
             try {
                 console.log("window.onload: Starting Firebase initialization...");
-                if (Object.keys(firebaseConfig).length === 0) {
-                    const message = "Error: Firebase configuration missing.";
-                    showCustomModal(message);
-                    elements.loadingScreen.textContent = message;
-                    console.error("Firebase Init:", message);
-                    return;
-                }
                 
                 app = initializeApp(firebaseConfig);
                 auth = getAuth(app);
@@ -300,14 +293,15 @@
                         elements.mainContainer.classList.remove('hidden');
                         elements.loadingScreen.classList.add('hidden');
                     } else {
-                        console.log("No user signed in. Attempting to sign in anonymously or with custom token.");
                         try {
-                            if (initialAuthToken) {
-                                console.log("Signing in with custom token...");
-                                await signInWithCustomToken(auth, initialAuthToken);
+                            console.log("No user signed in. Attempting to sign in...");
+                            const token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+                            if (token) {
+                                await signInWithCustomToken(auth, token);
+                                console.log("Signed in with custom token.");
                             } else {
-                                console.log("Signing in anonymously...");
                                 await signInAnonymously(auth);
+                                console.log("Signed in anonymously.");
                             }
                         } catch (error) {
                             console.error("Firebase Auth error:", error);
