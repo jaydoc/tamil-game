@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tamil Listening Game</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Baloo+Chettan+2:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Baloo Chettan 2', sans-serif;
+            background-color: #f0f4f8;
+            color: #333;
+        }
+        .icon {
+            font-size: 4rem;
+            line-height: 1;
+        }
+        .correct-answer {
+            transform: scale(1.1);
+            transition: transform 0.3s ease-in-out;
+            border: 4px solid #34d399;
+            box-shadow: 0 0 15px #34d399;
+        }
+        .incorrect-answer {
+            transform: scale(0.9);
+            transition: transform 0.3s ease-in-out;
+            border: 4px solid #ef4444;
+        }
+        button:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.5);
+        }
+        .btn-disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-8">
+
+    <div id="loading-screen" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
+        <div class="text-white text-lg font-bold">Loading...</div>
+    </div>
+
+    <div id="main-container" class="container mx-auto max-w-4xl p-4 bg-white rounded-2xl shadow-xl flex flex-col min-h-screen hidden">
+        <header class="text-center mb-6">
+            <h1 class="text-4xl font-extrabold text-indigo-700">Listen & Learn Tamil!</h1>
+            <p class="text-lg text-gray-600 mt-2">Listen to the word and find the correct picture.</p>
+        </header>
+        
+        <div class="bg-gray-100 p-3 rounded-xl mb-6 text-center">
+            <p class="text-gray-600 text-sm">To share this game with other parents, share this link and this ID:</p>
+            <p id="app-id-display" class="font-mono text-xs sm:text-sm md:text-md font-bold text-gray-800 mt-1"></p>
+        </div>
+
+        <div id="kid-selection-view" class="flex flex-col items-center">
+            <h2 class="text-2xl font-bold mb-4">Who's playing?</h2>
+            <div id="kid-list" class="flex flex-wrap gap-4 justify-center mb-6 max-h-52 overflow-y-auto w-full">
+                <!-- Kid buttons will be injected here -->
+            </div>
+            <div class="flex flex-col sm:flex-row items-center gap-4 w-full justify-center">
+                <input id="new-kid-name" type="text" placeholder="Enter a new name" class="w-full sm:w-auto p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                <button id="add-kid-btn" class="w-full sm:w-auto p-3 bg-green-500 hover:bg-green-600 text-white font-bold rounded-xl shadow-md transition-transform transform hover:scale-105" aria-label="Add a new player">
+                    Add Player
+                </button>
+            </div>
+            <p id="kid-selection-error" class="text-red-500 mt-2 hidden">Please select a player to start.</p>
+        </div>
+
+        <div id="game-view" class="flex flex-col flex-grow items-center justify-center p-4 hidden">
+            <div class="flex justify-between items-center w-full mb-6">
+                <div class="flex items-center space-x-2">
+                    <span class="text-lg font-semibold">Player:</span>
+                    <span id="current-player-name" class="text-lg font-bold text-indigo-600"></span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <span class="text-lg font-semibold">Correct:</span>
+                    <span id="correct-count" class="text-lg font-bold text-pink-500">0</span>
+                </div>
+            </div>
+
+            <div id="question-card" class="bg-white p-6 sm:p-8 rounded-2xl shadow-lg text-center mb-6 w-full max-w-md">
+                <p id="audio-status" class="text-xl text-gray-700">Listen to the word:</p>
+                <button id="play-audio-btn" class="mt-4 p-4 bg-indigo-500 hover:bg-indigo-600 text-white rounded-full transition-transform transform hover:scale-110 shadow-lg" aria-label="Play Tamil word audio">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4.004a1 1 0 001.555.832l3.445-2.002a1 1 0 000-1.664l-3.445-2.002z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+                <p id="transliteration-display" class="mt-2 text-sm font-semibold text-gray-500"></p>
+            </div>
+            
+            <div id="answers-container" class="grid grid-cols-2 gap-4 w-full max-w-lg">
+                <!-- Answer options will be dynamically added here -->
+            </div>
+
+            <div id="game-message" class="mt-6 text-xl font-bold text-center h-8"></div>
+            <div class="flex mt-8 gap-4">
+                <button id="start-new-game-btn" class="p-3 bg-yellow-500 hover:bg-yellow-600 text-white font-bold rounded-xl shadow-md transition-transform transform hover:scale-105 btn-disabled" aria-label="Start next question" disabled>
+                    Next Question
+                </button>
+                <button id="back-to-players-btn" class="p-3 bg-gray-400 hover:bg-gray-500 text-white font-bold rounded-xl shadow-md transition-transform transform hover:scale-105" aria-label="Back to player selection screen">
+                    Back to Players
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for game completion -->
+    <div id="win-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 hidden">
+        <div class="bg-white p-8 rounded-2xl text-center shadow-2xl animate-pulse">
+            <h3 class="text-3xl font-extrabold text-indigo-700">வெற்றி! (Vetri!)</h3>
+            <p class="text-xl font-semibold mt-4">You did it! All words learned!</p>
+            <p class="text-lg mt-2">Let's play another round!</p>
+            <button id="win-close-btn" class="mt-6 p-3 bg-green-500 hover:bg-green-600 text-white font-bold rounded-xl transition-transform transform hover:scale-105" aria-label="Close win modal">
+                Great!
+            </button>
+        </div>
+    </div>
+
+    <!-- Custom Modal for Messages -->
+    <div id="custom-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 hidden">
+        <div class="bg-white p-6 rounded-xl shadow-lg max-w-sm text-center">
+            <p id="custom-modal-message" class="text-lg mb-4"></p>
+            <button id="custom-modal-close" class="p-2 px-4 bg-gray-400 hover:bg-gray-500 text-white rounded-xl" aria-label="Close message modal">OK</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, query, addDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global variables provided by the environment
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        let app, auth, db, userId;
+        let kidsCollectionRef;
+        const audioCache = {};
+        let askedQuestions = [];
+        let currentQuestion = null;
+
+        // You must replace [your-username] and [your-repository-name] with your actual GitHub info.
+        // For example: 'https://coder123.github.io/tamil-game/audio/amma.mp3'
+        const baseAudioUrl = 'https://[your-username].github.io/[your-repository-name]/audio/';
+        
+        const familyData = [
+            { english: 'Mother', tamil: 'அம்மா', transliteration: 'Amma', icon: 'MOM_ICON', audioUrl: `${baseAudioUrl}amma.mp3` },
+            { english: 'Father', tamil: 'அப்பா', transliteration: 'Appa', icon: 'DAD_ICON', audioUrl: `${baseAudioUrl}appa.mp3` },
+            { english: 'Son', tamil: 'மகன்', transliteration: 'Makan', icon: 'SON_ICON', audioUrl: `${baseAudioUrl}makan.mp3` },
+            { english: 'Daughter', tamil: 'மகள்', transliteration: 'Makaḷ', icon: 'DAUGHTER_ICON', audioUrl: `${baseAudioUrl}makal.mp3` },
+            { english: 'Elder Brother', tamil: 'அண்ணன்', transliteration: 'Aṇṇaṉ', icon: 'BROTHER_ICON', audioUrl: `${baseAudioUrl}annan.mp3` },
+            { english: 'Elder Sister', tamil: 'அக்கா', transliteration: 'Akkā', icon: 'SISTER_ICON', audioUrl: `${baseAudioUrl}akka.mp3` },
+            { english: 'Younger Brother', tamil: 'தம்பி', transliteration: 'Tampi', icon: 'BROTHER_ICON', audioUrl: `${baseAudioUrl}tampi.mp3` },
+            { english: 'Younger Sister', tamil: 'தங்கை', transliteration: 'Taṅkai', icon: 'SISTER_ICON', audioUrl: `${baseAudioUrl}tangkai.mp3` },
+            { english: 'Grandfather', tamil: 'தாத்தா', transliteration: 'Tāttā', icon: 'GRANDPA_ICON', audioUrl: `${baseAudioUrl}tatta.mp3` },
+            { english: 'Grandmother', tamil: 'பாட்டி', transliteration: 'Pāṭṭi', icon: 'GRANDMA_ICON', audioUrl: `${baseAudioUrl}patti.mp3` },
+            { english: "Father's Older Brother", tamil: 'பெரியப்பா', transliteration: 'Periyappā', icon: 'UNCLE_ICON', audioUrl: `${baseAudioUrl}periyappa.mp3` },
+            { english: "Father's Younger Brother", tamil: 'சித்தப்பா', transliteration: 'Cittappā', icon: 'UNCLE_ICON', audioUrl: `${baseAudioUrl}cittappa.mp3` },
+            { english: "Father's Older Sister", tamil: 'பெரியம்மா', transliteration: 'Periyammā', icon: 'AUNT_ICON', audioUrl: `${baseAudioUrl}periyamma.mp3` },
+            { english: "Father's Younger Sister", tamil: 'சித்தி', transliteration: 'Citti', icon: 'AUNT_ICON', audioUrl: `${baseAudioUrl}citti.mp3` },
+            { english: "Mother's Older Sister", tamil: 'பெரியம்மா', transliteration: 'Periyammā', icon: 'AUNT_ICON', audioUrl: `${baseAudioUrl}periyamma.mp3` },
+            { english: "Mother's Younger Sister", tamil: 'சித்தி', transliteration: 'Citti', icon: 'AUNT_ICON', audioUrl: `${baseAudioUrl}citti.mp3` },
+            { english: "Mom's brother", tamil: 'மாமா', transliteration: 'Māmā', icon: 'MOMS_BROTHER_ICON', audioUrl: `${baseAudioUrl}mama.mp3` },
+            { english: "Dad's sister", tamil: 'அத்தை', transliteration: 'Attai', icon: 'DADS_SISTER_ICON', audioUrl: `${baseAudioUrl}attai.mp3` }
+        ];
+
+        const iconMap = {
+            'MOM_ICON': '👩‍👧',
+            'DAD_ICON': '👨‍👦',
+            'SON_ICON': '👦',
+            'DAUGHTER_ICON': '👧',
+            'BROTHER_ICON': '👨‍👦',
+            'SISTER_ICON': '👩‍👧',
+            'GRANDPA_ICON': '👴',
+            'GRANDMA_ICON': '👵',
+            'UNCLE_ICON': '👨',
+            'AUNT_ICON': '👩',
+            'MOMS_BROTHER_ICON': '🧑‍🦱',
+            'DADS_SISTER_ICON': '👩‍🦰'
+        };
+
+        const elements = {
+            loadingScreen: document.getElementById('loading-screen'),
+            mainContainer: document.getElementById('main-container'),
+            appIdDisplay: document.getElementById('app-id-display'),
+            kidSelectionView: document.getElementById('kid-selection-view'),
+            kidList: document.getElementById('kid-list'),
+            newKidNameInput: document.getElementById('new-kid-name'),
+            addKidBtn: document.getElementById('add-kid-btn'),
+            kidSelectionError: document.getElementById('kid-selection-error'),
+            gameView: document.getElementById('game-view'),
+            currentPlayerName: document.getElementById('current-player-name'),
+            correctCount: document.getElementById('correct-count'),
+            audioStatus: document.getElementById('audio-status'),
+            playAudioBtn: document.getElementById('play-audio-btn'),
+            transliterationDisplay: document.getElementById('transliteration-display'),
+            answersContainer: document.getElementById('answers-container'),
+            gameMessage: document.getElementById('game-message'),
+            startNewGameBtn: document.getElementById('start-new-game-btn'),
+            backToPlayersBtn: document.getElementById('back-to-players-btn'),
+            winModal: document.getElementById('win-modal'),
+            winCloseBtn: document.getElementById('win-close-btn'),
+            customModal: document.getElementById('custom-modal'),
+            customModalMessage: document.getElementById('custom-modal-message'),
+            customModalClose: document.getElementById('custom-modal-close')
+        };
+
+        let currentKidId = null;
+        let currentKidName = '';
+        let correctAnswers = 0;
+        let gameActive = false;
+
+        function showCustomModal(message) {
+            elements.customModalMessage.textContent = message;
+            elements.customModal.classList.remove('hidden');
+        }
+
+        // --- Audio Playback with Local Files ---
+        async function playAudio(url, transliteration) {
+            if (!url) {
+                elements.audioStatus.textContent = 'Audio unavailable.';
+                elements.transliterationDisplay.textContent = transliteration;
+                return;
+            }
+
+            if (audioCache[url]) {
+                audioCache[url].play();
+                return;
+            }
+
+            elements.playAudioBtn.disabled = true;
+            elements.transliterationDisplay.textContent = transliteration;
+            elements.audioStatus.textContent = 'Loading audio...';
+
+            try {
+                const newAudio = new Audio(url);
+                newAudio.oncanplaythrough = () => {
+                    newAudio.play();
+                    elements.audioStatus.textContent = 'Listen to the word:';
+                    elements.transliterationDisplay.textContent = '';
+                    elements.playAudioBtn.disabled = false;
+                };
+                newAudio.onerror = (e) => {
+                    console.error("Audio playback failed:", e);
+                    elements.audioStatus.textContent = 'Audio unavailable. Read the word:';
+                    elements.transliterationDisplay.textContent = transliteration;
+                    elements.playAudioBtn.disabled = false;
+                };
+                audioCache[url] = newAudio;
+            } catch (e) {
+                console.error("Error creating audio object:", e);
+                elements.audioStatus.textContent = 'Audio unavailable. Read the word:';
+                elements.transliterationDisplay.textContent = transliteration;
+                elements.playAudioBtn.disabled = false;
+            }
+        }
+
+        // --- Firebase Initialization and Auth ---
+        window.onload = async function() {
+            try {
+                console.log("window.onload: Starting Firebase initialization...");
+                if (Object.keys(firebaseConfig).length === 0) {
+                    const message = "Error: Firebase configuration missing.";
+                    showCustomModal(message);
+                    elements.loadingScreen.textContent = message;
+                    console.error("Firebase Init:", message);
+                    return;
+                }
+                
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                console.log("Firebase services initialized successfully.");
+
+                elements.appIdDisplay.textContent = appId;
+                console.log("App ID:", appId);
+
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        console.log("User authenticated with UID:", userId);
+                        kidsCollectionRef = collection(db, `artifacts/${appId}/public/data/kids`);
+                        console.log("Firestore kids collection reference created.");
+                        await loadKids();
+                        elements.mainContainer.classList.remove('hidden');
+                        elements.loadingScreen.classList.add('hidden');
+                    } else {
+                        console.log("No user signed in. Attempting to sign in anonymously or with custom token.");
+                        try {
+                            if (initialAuthToken) {
+                                console.log("Signing in with custom token...");
+                                await signInWithCustomToken(auth, initialAuthToken);
+                            } else {
+                                console.log("Signing in anonymously...");
+                                await signInAnonymously(auth);
+                            }
+                        } catch (error) {
+                            console.error("Firebase Auth error:", error);
+                            const message = `Authentication failed. Check your Firebase config or network connection.`;
+                            showCustomModal(message);
+                            elements.loadingScreen.textContent = message;
+                        }
+                    }
+                });
+            } catch (e) {
+                console.error("Error initializing Firebase:", e);
+                const message = "Error initializing application. Please check console for details.";
+                showCustomModal(message);
+                elements.loadingScreen.textContent = message;
+            }
+        };
+
+        // --- Firestore Operations ---
+        async function loadKids() {
+            try {
+                console.log("loadKids: Starting real-time listener for kids collection.");
+                onSnapshot(query(kidsCollectionRef), (snapshot) => {
+                    console.log("onSnapshot: Data received. Updating kid list.");
+                    elements.kidList.innerHTML = '';
+                    snapshot.forEach(doc => {
+                        const kid = doc.data();
+                        const kidBtn = document.createElement('button');
+                        kidBtn.textContent = kid.name;
+                        kidBtn.className = 'p-3 bg-indigo-500 hover:bg-indigo-600 text-white font-bold rounded-xl shadow-md transition-transform transform hover:scale-105 focus:ring-2 focus:ring-indigo-500';
+                        kidBtn.onclick = () => selectKid(doc.id, kid.name);
+                        kidBtn.setAttribute('aria-label', `Select player ${kid.name}`);
+                        elements.kidList.appendChild(kidBtn);
+                    });
+                    if (snapshot.empty) {
+                        console.log("onSnapshot: No kids found in Firestore. Prompting user to add one.");
+                    }
+                });
+            } catch (e) {
+                console.error("Error loading kids:", e);
+                elements.kidList.innerHTML = `<p class="text-red-500">Error loading players. Please try again.</p>`;
+                showCustomModal("Error loading players from the database. Please check your network connection.");
+            }
+        }
+
+        async function createKid(name) {
+            try {
+                const newKidDocRef = await addDoc(kidsCollectionRef, {
+                    name: name,
+                    createdAt: new Date(),
+                    progress: { correctAnswers: 0, totalQuestions: 0 }
+                });
+                console.log("New kid created with ID:", newKidDocRef.id);
+                selectKid(newKidDocRef.id, name);
+                elements.newKidNameInput.value = '';
+            } catch (e) {
+                console.error("Error creating kid:", e);
+                showCustomModal("Error creating player. Please check the console for details.");
+            }
+        }
+
+        async function updateKidProgress(isCorrect) {
+            if (!currentKidId) return;
+            try {
+                const kidDocRef = doc(kidsCollectionRef, currentKidId);
+                const docSnap = await getDoc(kidDocRef);
+                if (docSnap.exists()) {
+                    const kidData = docSnap.data();
+                    let newProgress = { ...kidData.progress };
+                    newProgress.totalQuestions = (newProgress.totalQuestions || 0) + 1;
+                    if (isCorrect) {
+                        newProgress.correctAnswers = (newProgress.correctAnswers || 0) + 1;
+                    }
+                    await updateDoc(kidDocRef, { progress: newProgress });
+                    console.log("Kid progress updated successfully.");
+                } else {
+                    console.warn("Attempted to update a non-existent kid document:", currentKidId);
+                }
+            } catch (e) {
+                console.error("Error updating kid progress:", e);
+                showCustomModal("Error updating player progress.");
+            }
+        }
+
+        // --- Game Logic ---
+        function selectKid(id, name) {
+            currentKidId = id;
+            currentKidName = name;
+            elements.currentPlayerName.textContent = name;
+            elements.kidSelectionView.classList.add('hidden');
+            elements.gameView.classList.remove('hidden');
+            startGame();
+        }
+
+        function startGame() {
+            gameActive = true;
+            elements.answersContainer.innerHTML = '';
+            elements.gameMessage.textContent = '';
+            elements.startNewGameBtn.classList.add('btn-disabled');
+            elements.startNewGameBtn.disabled = true;
+            elements.transliterationDisplay.textContent = '';
+            
+            if (askedQuestions.length === familyData.length) {
+                setTimeout(() => elements.winModal.classList.remove('hidden'), 500);
+                return;
+            }
+
+            let nextQuestion;
+            do {
+                nextQuestion = familyData[Math.floor(Math.random() * familyData.length)];
+            } while (askedQuestions.includes(nextQuestion.english));
+            
+            currentQuestion = nextQuestion;
+            
+            let answerOptions = [currentQuestion];
+            while (answerOptions.length < 4) {
+                const randomOption = familyData[Math.floor(Math.random() * familyData.length)];
+                if (!answerOptions.includes(randomOption) && !answerOptions.some(item => item.english === randomOption.english)) {
+                    answerOptions.push(randomOption);
+                }
+            }
+            shuffle(answerOptions);
+
+            answerOptions.forEach(item => {
+                const answerBtn = document.createElement('button');
+                answerBtn.className = 'flex flex-col items-center justify-center p-4 bg-gray-200 hover:bg-gray-300 rounded-xl shadow-md transition-transform transform hover:scale-105 focus:ring-2 focus:ring-indigo-500';
+                answerBtn.dataset.english = item.english;
+                answerBtn.setAttribute('aria-label', `Select ${item.english}`);
+                answerBtn.innerHTML = `
+                    <div class="icon mb-2">${iconMap[item.icon]}</div>
+                    <span class="text-lg font-bold text-gray-800">${item.english}</span>
+                `;
+                answerBtn.onclick = () => handleAnswer(item.english);
+                elements.answersContainer.appendChild(answerBtn);
+            });
+            
+            playAudio(currentQuestion.audioUrl, currentQuestion.transliteration);
+        }
+
+        function handleAnswer(selectedEnglishWord) {
+            if (!gameActive) return;
+
+            gameActive = false;
+            const isCorrect = (selectedEnglishWord === currentQuestion.english);
+            
+            if (isCorrect) {
+                elements.gameMessage.textContent = 'சரியானது! (Sariyanatu!)';
+                elements.gameMessage.classList.remove('text-red-600');
+                elements.gameMessage.classList.add('text-green-600');
+                correctAnswers++;
+                askedQuestions.push(currentQuestion.english);
+                
+                elements.startNewGameBtn.classList.remove('btn-disabled');
+                elements.startNewGameBtn.disabled = false;
+
+            } else {
+                elements.gameMessage.textContent = 'தவறாகிவிட்டது! மீண்டும் முயற்சி செய்! (Tavarāki viṭṭatu! Mīṇṭum muyarcci cey!)';
+                elements.gameMessage.classList.remove('text-green-600');
+                elements.gameMessage.classList.add('text-red-600');
+                
+                gameActive = true;
+            }
+            elements.correctCount.textContent = correctAnswers;
+
+            const answerButtons = elements.answersContainer.querySelectorAll('button');
+            answerButtons.forEach(btn => {
+                if (btn.dataset.english === currentQuestion.english) {
+                    btn.classList.add('correct-answer');
+                } else if (btn.dataset.english === selectedEnglishWord) {
+                    btn.classList.add('incorrect-answer');
+                }
+            });
+
+            updateKidProgress(isCorrect);
+        }
+
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        // --- Event Listeners ---
+        elements.addKidBtn.addEventListener('click', () => {
+            const kidName = elements.newKidNameInput.value.trim();
+            if (kidName) {
+                createKid(kidName);
+            } else {
+                elements.kidSelectionError.classList.remove('hidden');
+            }
+        });
+
+        elements.playAudioBtn.addEventListener('click', () => {
+            if (currentQuestion) {
+                playAudio(currentQuestion.audioUrl, currentQuestion.transliteration);
+            }
+        });
+
+        elements.backToPlayersBtn.addEventListener('click', () => {
+            elements.gameView.classList.add('hidden');
+            elements.kidSelectionView.classList.remove('hidden');
+            currentKidId = null;
+            currentKidName = '';
+            askedQuestions = [];
+        });
+
+        elements.startNewGameBtn.addEventListener('click', () => {
+            startGame();
+        });
+
+        elements.winCloseBtn.addEventListener('click', () => {
+            elements.winModal.classList.add('hidden');
+            correctAnswers = 0;
+            elements.correctCount.textContent = 0;
+            askedQuestions = [];
+            startGame();
+        });
+
+        elements.customModalClose.addEventListener('click', () => {
+            elements.customModal.classList.add('hidden');
+        });
+    </script>
+</body>
+</html>
