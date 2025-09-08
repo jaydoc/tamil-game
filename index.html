@@ -41,25 +41,29 @@
 </head>
 <body class="p-4 sm:p-8">
 
+    <!-- Loading screen to display while Firebase initializes -->
     <div id="loading-screen" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
         <div class="text-white text-lg font-bold">Loading...</div>
     </div>
 
+    <!-- Main application container -->
     <div id="main-container" class="container mx-auto max-w-4xl p-4 bg-white rounded-2xl shadow-xl flex flex-col min-h-screen hidden">
         <header class="text-center mb-6">
             <h1 class="text-4xl font-extrabold text-indigo-700">Listen & Learn Tamil!</h1>
             <p class="text-lg text-gray-600 mt-2">Listen to the word and find the correct picture.</p>
         </header>
         
+        <!-- Display for the unique app ID for sharing -->
         <div class="bg-gray-100 p-3 rounded-xl mb-6 text-center">
             <p class="text-gray-600 text-sm">To share this game with other parents, share this link and this ID:</p>
             <p id="app-id-display" class="font-mono text-xs sm:text-sm md:text-md font-bold text-gray-800 mt-1"></p>
         </div>
 
+        <!-- Player selection view -->
         <div id="kid-selection-view" class="flex flex-col items-center">
             <h2 class="text-2xl font-bold mb-4">Who's playing?</h2>
             <div id="kid-list" class="flex flex-wrap gap-4 justify-center mb-6 max-h-52 overflow-y-auto w-full">
-                <!-- Kid buttons will be injected here -->
+                <!-- Kid buttons will be injected here by Firestore listener -->
             </div>
             <div class="flex flex-col sm:flex-row items-center gap-4 w-full justify-center">
                 <input id="new-kid-name" type="text" placeholder="Enter a new name" class="w-full sm:w-auto p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
@@ -70,6 +74,7 @@
             <p id="kid-selection-error" class="text-red-500 mt-2 hidden">Please select a player to start.</p>
         </div>
 
+        <!-- Main game view -->
         <div id="game-view" class="flex flex-col flex-grow items-center justify-center p-4 hidden">
             <div class="flex justify-between items-center w-full mb-6">
                 <div class="flex items-center space-x-2">
@@ -82,6 +87,7 @@
                 </div>
             </div>
 
+            <!-- Question card with audio button -->
             <div id="question-card" class="bg-white p-6 sm:p-8 rounded-2xl shadow-lg text-center mb-6 w-full max-w-md">
                 <p id="audio-status" class="text-xl text-gray-700">Listen to the word:</p>
                 <button id="play-audio-btn" class="mt-4 p-4 bg-indigo-500 hover:bg-indigo-600 text-white rounded-full transition-transform transform hover:scale-110 shadow-lg" aria-label="Play Tamil word audio">
@@ -92,6 +98,7 @@
                 <p id="transliteration-display" class="mt-2 text-sm font-semibold text-gray-500"></p>
             </div>
             
+            <!-- Answer options grid -->
             <div id="answers-container" class="grid grid-cols-2 gap-4 w-full max-w-lg">
                 <!-- Answer options will be dynamically added here -->
             </div>
@@ -120,7 +127,7 @@
         </div>
     </div>
 
-    <!-- Custom Modal for Messages -->
+    <!-- Custom Modal for Messages (replaces alert()) -->
     <div id="custom-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 hidden">
         <div class="bg-white p-6 rounded-xl shadow-lg max-w-sm text-center">
             <p id="custom-modal-message" class="text-lg mb-4"></p>
@@ -128,14 +135,24 @@
         </div>
     </div>
 
+    <!-- JavaScript logic -->
     <script type="module">
+        // Firebase SDK imports
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, query, addDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Global variables provided by the environment
+        // Firebase configuration and global variables provided by the environment
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const firebaseConfig = {
+            apiKey: "AIzaSyB00p4REMFzp3DtE-hY6lnYsT0CaYWSRRw",
+            authDomain: "tamil-listening-game.firebaseapp.com",
+            projectId: "tamil-listening-game",
+            storageBucket: "tamil-listening-game.firebasestorage.app",
+            messagingSenderId: "461656256480",
+            appId: "1:461656256480:web:60e0ca08ea9893e1c34585",
+            measurementId: "G-W1M8716GL4"
+        };
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
         
         let app, auth, db, userId;
@@ -144,10 +161,10 @@
         let askedQuestions = [];
         let currentQuestion = null;
 
-        // You must replace [your-username] and [your-repository-name] with your actual GitHub info.
-        // For example: 'https://coder123.github.io/tamil-game/audio/amma.mp3'
+        // Base URL for pre-generated audio files on a public GitHub repository
         const baseAudioUrl = 'https://jaydoc.github.io/tamil-game/audio/';
         
+        // Family data. Duplicates have been removed to ensure the "all words learned" logic functions correctly.
         const familyData = [
             { english: 'Mother', tamil: 'அம்மா', transliteration: 'Amma', icon: 'MOM_ICON', audioUrl: `${baseAudioUrl}amma.mp3` },
             { english: 'Father', tamil: 'அப்பா', transliteration: 'Appa', icon: 'DAD_ICON', audioUrl: `${baseAudioUrl}appa.mp3` },
@@ -159,16 +176,11 @@
             { english: 'Younger Sister', tamil: 'தங்கை', transliteration: 'Taṅkai', icon: 'SISTER_ICON', audioUrl: `${baseAudioUrl}tangkai.mp3` },
             { english: 'Grandfather', tamil: 'தாத்தா', transliteration: 'Tāttā', icon: 'GRANDPA_ICON', audioUrl: `${baseAudioUrl}tatta.mp3` },
             { english: 'Grandmother', tamil: 'பாட்டி', transliteration: 'Pāṭṭi', icon: 'GRANDMA_ICON', audioUrl: `${baseAudioUrl}patti.mp3` },
-            { english: "Father's Older Brother", tamil: 'பெரியப்பா', transliteration: 'Periyappā', icon: 'UNCLE_ICON', audioUrl: `${baseAudioUrl}periyappa.mp3` },
-            { english: "Father's Younger Brother", tamil: 'சித்தப்பா', transliteration: 'Cittappā', icon: 'UNCLE_ICON', audioUrl: `${baseAudioUrl}cittappa.mp3` },
-            { english: "Father's Older Sister", tamil: 'பெரியம்மா', transliteration: 'Periyammā', icon: 'AUNT_ICON', audioUrl: `${baseAudioUrl}periyamma.mp3` },
-            { english: "Father's Younger Sister", tamil: 'சித்தி', transliteration: 'Citti', icon: 'AUNT_ICON', audioUrl: `${baseAudioUrl}citti.mp3` },
-            { english: "Mother's Older Sister", tamil: 'பெரியம்மா', transliteration: 'Periyammā', icon: 'AUNT_ICON', audioUrl: `${baseAudioUrl}periyamma.mp3` },
-            { english: "Mother's Younger Sister", tamil: 'சித்தி', transliteration: 'Citti', icon: 'AUNT_ICON', audioUrl: `${baseAudioUrl}citti.mp3` },
-            { english: "Mom's brother", tamil: 'மாமா', transliteration: 'Māmā', icon: 'MOMS_BROTHER_ICON', audioUrl: `${baseAudioUrl}mama.mp3` },
-            { english: "Dad's sister", tamil: 'அத்தை', transliteration: 'Attai', icon: 'DADS_SISTER_ICON', audioUrl: `${baseAudioUrl}attai.mp3` }
+            { english: "Aunt", tamil: 'அத்தை', transliteration: 'Attai', icon: 'AUNT_ICON', audioUrl: `${baseAudioUrl}attai.mp3` },
+            { english: "Uncle", tamil: 'மாமா', transliteration: 'Māmā', icon: 'UNCLE_ICON', audioUrl: `${baseAudioUrl}mama.mp3` }
         ];
 
+        // Maps English names to an appropriate emoji icon
         const iconMap = {
             'MOM_ICON': '👩‍👧',
             'DAD_ICON': '👨‍👦',
@@ -180,8 +192,6 @@
             'GRANDMA_ICON': '👵',
             'UNCLE_ICON': '👨',
             'AUNT_ICON': '👩',
-            'MOMS_BROTHER_ICON': '🧑‍🦱',
-            'DADS_SISTER_ICON': '👩‍🦰'
         };
 
         const elements = {
