@@ -1,52 +1,40 @@
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener('DOMContentLoaded', () => {
+  const uravinar = [
+    { name: "அம்மா", file: "amma.mp3" },
+    { name: "அப்பா", file: "appa.mp3" },
+    { name: "அண்ணன்", file: "annan.mp3" },
+    { name: "அக்கா", file: "akka.mp3" },
+    { name: "தம்பி", file: "tampi.mp3" },
+    { name: "தங்கை", file: "tangkai.mp3" },
+    { name: "மகன்", file: "makan.mp3" },
+    { name: "மகள்", file: "makal.mp3" },
+    { name: "தாத்தா", file: "tatta.mp3" },
+    { name: "பாட்டி", file: "patti.mp3" },
+    { name: "சித்தப்பா", file: "citappa.mp3" },
+    { name: "சித்தி", file: "citti.mp3" },
+    { name: "மாமா", file: "mama.mp3" },
+    { name: "அத்தை", file: "attai.mp3" },
+    { name: "பெரியப்பா", file: "periyappa.mp3" },
+    { name: "பெரியம்மா", file: "periyamma.mp3" }
+  ];
 
-const baseAudioUrl = "https://jaydoc.github.io/tamil-game/audio/";
+  const container = document.getElementById('game-container');
 
-const words = [
-  { tamil: 'அம்மா', transliteration: 'Amma', audio: 'amma.mp3' },
-  { tamil: 'அப்பா', transliteration: 'Appa', audio: 'appa.mp3' },
-  { tamil: 'மகன்', transliteration: 'Makan', audio: 'makan.mp3' },
-  { tamil: 'மகள்', transliteration: 'Makaḷ', audio: 'makal.mp3' },
-  { tamil: 'அண்ணன்', transliteration: 'Aṇṇaṉ', audio: 'annan.mp3' },
-  { tamil: 'அக்கா', transliteration: 'Akkā', audio: 'akka.mp3' },
-  { tamil: 'தம்பி', transliteration: 'Tampi', audio: 'tampi.mp3' },
-  { tamil: 'தங்கை', transliteration: 'Taṅkai', audio: 'tangkai.mp3' },
-  { tamil: 'தாத்தா', transliteration: 'Tāttā', audio: 'tatta.mp3' },
-  { tamil: 'பாட்டி', transliteration: 'Pāṭṭi', audio: 'patti.mp3' },
-  { tamil: 'பெரியப்பா', transliteration: 'Periyappā', audio: 'periyappa.mp3' },
-  { tamil: 'சித்தப்பா', transliteration: 'Cittappā', audio: 'citappa.mp3' },
-  { tamil: 'பெரியம்மா', transliteration: 'Periyammā', audio: 'periyamma.mp3' },
-  { tamil: 'சித்தி', transliteration: 'Citti', audio: 'citti.mp3' },
-  { tamil: 'மாமா', transliteration: 'Māmā', audio: 'mama.mp3' },
-  { tamil: 'அத்தை', transliteration: 'Attai', audio: 'attai.mp3' }
-];
+  if (!container) {
+    console.error('Game container not found');
+    return;
+  }
 
-const container = document.getElementById("word-container");
+  uravinar.forEach(person => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.textContent = person.name;
 
-words.forEach(word => {
-  const card = document.createElement("div");
-  card.className = "card";
+    card.addEventListener('click', () => {
+      const audio = new Audio(`audio/${person.file}`);
+      audio.play();
+    });
 
-  const tamilText = document.createElement("div");
-  tamilText.className = "tamil";
-  tamilText.innerText = word.tamil;
-
-  const translitText = document.createElement("div");
-  translitText.className = "translit";
-  translitText.innerText = word.transliteration;
-
-  const playButton = document.createElement("button");
-  playButton.innerText = "🔊";
-  playButton.onclick = () => {
-    const audio = new Audio(`${baseAudioUrl}${word.audio}`);
-    audio.play();
-  };
-
-  card.appendChild(tamilText);
-  card.appendChild(translitText);
-  card.appendChild(playButton);
-
-  container.appendChild(card);
-});
-
+    container.appendChild(card);
+  });
 });
