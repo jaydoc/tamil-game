@@ -52,10 +52,11 @@
         </header>
         
         <div class="bg-gray-100 p-3 rounded-xl mb-6 text-center">
-            <p class="text-gray-600 text-sm">To share this game with other parents, share this link and this ID:</p>
+            <p class="text-gray-600 text-sm">To share this game with your class, share this link and this ID:</p>
             <p id="app-id-display" class="font-mono text-xs sm:text-sm md:text-md font-bold text-gray-800 mt-1"></p>
         </div>
 
+        <!-- Player Selection View -->
         <div id="kid-selection-view" class="flex flex-col items-center">
             <h2 class="text-2xl font-bold mb-4">Who's playing?</h2>
             <div id="kid-list" class="flex flex-wrap gap-4 justify-center mb-6 max-h-52 overflow-y-auto w-full">
@@ -67,9 +68,12 @@
                     Add Player
                 </button>
             </div>
-            <p id="kid-selection-error" class="text-red-500 mt-2 hidden">Please select a player to start.</p>
+            <button id="view-dashboard-btn" class="mt-4 p-3 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-xl shadow-md transition-transform transform hover:scale-105">
+                View Player Dashboard
+            </button>
         </div>
 
+        <!-- Game View -->
         <div id="game-view" class="flex flex-col flex-grow items-center justify-center p-4 hidden">
             <div class="flex justify-between items-center w-full mb-6">
                 <div class="flex items-center space-x-2">
@@ -106,6 +110,29 @@
                 </button>
             </div>
         </div>
+        
+        <!-- Player Dashboard View -->
+        <div id="dashboard-view" class="flex flex-col items-center p-4 hidden">
+            <h2 class="text-3xl font-bold mb-4 text-indigo-700">Player Dashboard</h2>
+            <div class="w-full overflow-x-auto">
+                <table class="min-w-full bg-white rounded-xl shadow-md">
+                    <thead class="bg-gray-200">
+                        <tr>
+                            <th class="py-3 px-4 text-left font-semibold text-gray-600 uppercase tracking-wider rounded-tl-xl">Player Name</th>
+                            <th class="py-3 px-4 text-left font-semibold text-gray-600 uppercase tracking-wider">Correct Answers</th>
+                            <th class="py-3 px-4 text-left font-semibold text-gray-600 uppercase tracking-wider rounded-tr-xl">Total Questions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dashboard-table-body" class="divide-y divide-gray-200">
+                        <!-- Player data will be inserted here -->
+                    </tbody>
+                </table>
+            </div>
+            <button id="back-to-selection-btn" class="mt-6 p-3 bg-gray-400 hover:bg-gray-500 text-white font-bold rounded-xl shadow-md transition-transform transform hover:scale-105">
+                Back to Selection
+            </button>
+        </div>
+
     </div>
 
     <!-- Modal for game completion -->
@@ -131,12 +158,20 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, query, addDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, query, addDoc, updateDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Global variables provided by the environment
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        // Firebase configuration from your project
+        const firebaseConfig = {
+            apiKey: "AIzaSyB00p4REMFzp3DtE-hY6lnYsT0CaYWSRRw",
+            authDomain: "tamil-listening-game.firebaseapp.com",
+            projectId: "tamil-listening-game",
+            storageBucket: "tamil-listening-game.firebasestorage.app",
+            messagingSenderId: "461656256480",
+            appId: "1:461656256480:web:60e0ca08ea9893e1c34585",
+            measurementId: "G-W1M8716GL4"
+        };
+        const appId = firebaseConfig.projectId;
+        const initialAuthToken = null;
         
         let app, auth, db, userId;
         let kidsCollectionRef;
@@ -144,6 +179,8 @@
         let askedQuestions = [];
         let currentQuestion = null;
 
+        // You must replace [your-username] and [your-repository-name] with your actual GitHub info.
+        // For example: 'https://coder123.github.io/tamil-game/audio/amma.mp3'
         const baseAudioUrl = 'https://jaydoc.github.io/tamil-game/audio/';
         
         const familyData = [
@@ -205,7 +242,12 @@
             winCloseBtn: document.getElementById('win-close-btn'),
             customModal: document.getElementById('custom-modal'),
             customModalMessage: document.getElementById('custom-modal-message'),
-            customModalClose: document.getElementById('custom-modal-close')
+            customModalClose: document.getElementById('custom-modal-close'),
+            // New dashboard elements
+            viewDashboardBtn: document.getElementById('view-dashboard-btn'),
+            dashboardView: document.getElementById('dashboard-view'),
+            dashboardTableBody: document.getElementById('dashboard-table-body'),
+            backToSelectionBtn: document.getElementById('back-to-selection-btn')
         };
 
         let currentKidId = null;
@@ -337,6 +379,43 @@
                 console.error("Error loading kids:", e);
                 elements.kidList.innerHTML = `<p class="text-red-500">Error loading players. Please try again.</p>`;
                 showCustomModal("Error loading players from the database. Please check your network connection.");
+            }
+        }
+
+        async function loadDashboardData() {
+            try {
+                console.log("loadDashboardData: Fetching all player data for dashboard.");
+                const querySnapshot = await getDocs(kidsCollectionRef);
+                elements.dashboardTableBody.innerHTML = '';
+                if (querySnapshot.empty) {
+                    const row = elements.dashboardTableBody.insertRow();
+                    const cell = row.insertCell(0);
+                    cell.colSpan = 3;
+                    cell.className = "py-4 text-center text-gray-500";
+                    cell.textContent = "No players found. Add a player to see their progress!";
+                } else {
+                    querySnapshot.forEach(doc => {
+                        const kid = doc.data();
+                        const row = elements.dashboardTableBody.insertRow();
+                        row.className = "hover:bg-gray-50 transition-colors";
+                        
+                        const nameCell = row.insertCell(0);
+                        nameCell.textContent = kid.name;
+                        nameCell.className = "py-3 px-4 text-gray-800 font-semibold";
+
+                        const correctCell = row.insertCell(1);
+                        correctCell.textContent = kid.progress?.correctAnswers || 0;
+                        correctCell.className = "py-3 px-4 text-gray-600";
+                        
+                        const totalCell = row.insertCell(2);
+                        totalCell.textContent = kid.progress?.totalQuestions || 0;
+                        totalCell.className = "py-3 px-4 text-gray-600";
+                    });
+                }
+            } catch (e) {
+                console.error("Error loading dashboard data:", e);
+                elements.dashboardTableBody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-red-500">Error loading data. Please try again.</td></tr>`;
+                showCustomModal("Error loading dashboard data. Please check the console.");
             }
         }
 
@@ -484,8 +563,19 @@
             if (kidName) {
                 createKid(kidName);
             } else {
-                elements.kidSelectionError.classList.remove('hidden');
+                showCustomModal("Please enter a name for the new player.");
             }
+        });
+
+        elements.viewDashboardBtn.addEventListener('click', () => {
+            elements.kidSelectionView.classList.add('hidden');
+            elements.dashboardView.classList.remove('hidden');
+            loadDashboardData();
+        });
+
+        elements.backToSelectionBtn.addEventListener('click', () => {
+            elements.dashboardView.classList.add('hidden');
+            elements.kidSelectionView.classList.remove('hidden');
         });
 
         elements.playAudioBtn.addEventListener('click', () => {
