@@ -1,3 +1,5 @@
+document.addEventListener("DOMContentLoaded", function () {
+
 const baseAudioUrl = "https://jaydoc.github.io/tamil-game/audio/";
 
 const words = [
@@ -45,4 +47,6 @@ words.forEach(word => {
   card.appendChild(playButton);
 
   container.appendChild(card);
+});
+
 });
